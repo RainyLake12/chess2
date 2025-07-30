@@ -1,4 +1,4 @@
-#include "../headers/game.hpp"
+#include "game.hpp"
 #include <utility>
 
 int piece::getValue() {
@@ -8,7 +8,7 @@ int piece::getValue() {
 		case BISHOP: return BISHOP_VALUE;
 		case ROOK: return ROOK_VALUE;
 		case QUEEN: return QUEEN_VALUE;
-		case KING: return CHECKMATE_VALUE;
+		case KING: return KING_VALUE;
 		default: return 0; // Invalid piece type
 	}
 }

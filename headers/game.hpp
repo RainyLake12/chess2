@@ -17,12 +17,12 @@
 #define ADVANCED_TWO_SQUARES 0x02
 
 #define PAWN_VALUE 100
-#define KNIGHT_VALUE 300
 #define BISHOP_VALUE 300
 #define ROOK_VALUE 500
+#define KNIGHT_VALUE 700
 #define QUEEN_VALUE 900
 
-#define CHECKMATE_VALUE 32000 // 320 Pawns
+#define KING_VALUE 32000 // 320 Pawns
 
 struct position {
 	int x, y;
