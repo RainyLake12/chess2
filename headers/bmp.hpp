@@ -2,10 +2,7 @@
 #pragma pack(1)
 #include <cstdint>
 #include <vector>
-
-struct color {
-	uint8_t r, g, b;
-};
+#include <string>
 
 struct BMPFileHeader {
 
@@ -37,6 +34,8 @@ struct BMPInfoHeader {
 struct image {
 
 	int32_t width, height;
-	std::vector<color> pixels;
+	uint32_t *pixels;
 
 };
+
+image parseBMP(string filename);

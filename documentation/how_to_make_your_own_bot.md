@@ -7,5 +7,5 @@ Bots are represented bby .dll files (although i might support .so files sometime
 Bots must have these functions in their .dll files:
 - string getName()
 - int evaluateMove(move m)
-- COLORREF *getIcon()
+- uint32_t *getIcon()
 	- Returns a row-major 2d array of colors representing the bot's icon
