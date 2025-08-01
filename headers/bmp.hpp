@@ -1,8 +1,9 @@
 #pragma once
-#pragma pack(1)
 #include <cstdint>
 #include <vector>
 #include <string>
+
+#pragma pack(push, 1)
 
 struct BMPFileHeader {
 
@@ -12,7 +13,7 @@ struct BMPFileHeader {
     uint16_t bfReserved2;
     uint32_t bfOffBits;    // offset to pixel data
 
-} __attribute__((packed));
+};
 
 
 struct BMPInfoHeader {
@@ -29,7 +30,9 @@ struct BMPInfoHeader {
     uint32_t biClrUsed;
     uint32_t biClrImportant;
 
-} __attribute__((packed));
+};
+
+#pragma pack(pop)
 
 struct image {
 
@@ -38,4 +41,4 @@ struct image {
 
 };
 
-image parseBMP(string filename);
+image parseBMP(std::string filename);

@@ -3,6 +3,7 @@
 #include <fstream>
 #include <cmath>
 #include <cstdint>
+#include <iostream>
 
 using namespace std;
 
@@ -15,22 +16,45 @@ Error Codes:
 */
 image parseBMP(string filename) {
 
-	image img;
+	image img = {};
 
 	ifstream in(filename, ios::binary);
+	if (!in.is_open()) {
+		cerr << "Error: Couldn't open BMP file: " << filename << endl;
+		return {};
+	}
+
 	BMPFileHeader fileHeader;
 	in.read(reinterpret_cast<char *>(&fileHeader), sizeof(BMPFileHeader));
 
-	if (fileHeader.bfType != 0x4D42) {
-		image invalid;
-		invalid.width = -1;
-		return invalid;
+	if (in.gcount() != sizeof(BMPFileHeader)) {
+		cerr << "Failed to read BMP file header!" << endl;
+		return {};
+	}
+
+
+	uint8_t *bm = reinterpret_cast<uint8_t *>(&fileHeader);
+	if (!(bm[0] == 0x42 && bm[1] == 0x4D)) {
+		cout << "Wrong magic number";
+		return {};
 	}
 
 	BMPInfoHeader infoHeader;
+
 	in.read(reinterpret_cast<char *>(&infoHeader), sizeof(BMPInfoHeader));
+	if (in.gcount() != sizeof(BMPInfoHeader)) {
+		cerr << "Failed to read BMP info header!" << endl;
+		return {};
+	}
+
 
 	vector<uint32_t> pallete = {};
+
+	if (infoHeader.biBitCount != 1 && infoHeader.biBitCount != 4 && infoHeader.biBitCount != 8
+	&& infoHeader.biBitCount != 16 && infoHeader.biBitCount != 24 && infoHeader.biBitCount != 32) {
+		cout << "Invalid Bit Count: " << infoHeader.biBitCount;
+		return {};
+	}
 
 	int palleteSize = 0;
 	if (infoHeader.biBitCount < 16) {
@@ -45,6 +69,7 @@ image parseBMP(string filename) {
 		for (int i = 0; i < palleteSize; i++) {
 			uint32_t color;
 			in.read(reinterpret_cast<char *>(&color), 4);
+			pallete.push_back(color);
 		}
 	}
 
@@ -58,6 +83,16 @@ image parseBMP(string filename) {
 		size = infoHeader.biSize;
 	}
 
+	if (pixelCount <= 0) {
+		cerr << "Invalid pixel count!" << endl;
+		exit(1);
+	}
+	if (size <= 0) {
+		cerr << "Invalid pixel data size!" << endl;
+		exit(1);
+	}
+
+
 	uint8_t *rawData = new uint8_t[size];
 	img.pixels = new uint32_t[pixelCount];
 
@@ -69,7 +104,8 @@ image parseBMP(string filename) {
 			for (int i = 0; i < size; i++) {
 				for (int j = 0; j < 8; j++) {
 					if (i * 8 + j > pixelCount) goto breakcase1;
-					img.pixels[i * 8 + j] = pallete[(rawData[i] << j ) & 1 ? pallete[1] : pallete[0]];
+					int bit = (rawData[i] >> (7 - j)) & 1;
+					img.pixels[i * 8 + j] = pallete[bit];
 				}
 			}
 			breakcase1:
@@ -96,53 +132,41 @@ image parseBMP(string filename) {
 
 		case 16: {
 			for (int i = 0; i < size; i+= 2) {
-				uint8_t *buffer = new uint8_t[2];
-				buffer = rawData + i;
+				uint16_t color = *reinterpret_cast<uint16_t *>(rawData + i);
 
-				uint16_t color = *reinterpret_cast<uint16_t *>(buffer);
-
-				int b = (color & 15) >> 4;
-				int g = ((color << 4) & 15) >> 4;
-				int r = ((color << 8) & 15) >> 4;
-				int a = ((color << 12) & 15) >> 4;
+				int b = color & 15;
+				int g = (color >> 4) & 15;
+				int r = (color >> 8) & 15;
+				int a = (color >> 12) & 15;
 
 				img.pixels[i] = (b + (g >> 8) + (r >> 16) + (a >> 24));
-				delete[] buffer;
 			}
 			break;
 		}
 
 		case 24: {
 			for (int i = 0; i < size; i+= 3) {
-				uint8_t *buffer = new uint8_t[4];
-				buffer = rawData + i;
+				uint32_t color = *reinterpret_cast<uint32_t *>(rawData + i);
 
-				uint32_t color = *reinterpret_cast<uint32_t *>(buffer);
+				int b = color & 255;
+				int g = (color >> 8) & 255;
+				int r = (color >> 16) & 255;
 
-				int b = (color & 255);
-				int g = ((color << 8) & 255);
-				int r = ((color << 16) & 255);
-
-				img.pixels[i] = (b + (g >> 8) + (r >> 16));
-				delete[] buffer;
+				img.pixels[i / 3] = (b + (g >> 8) + (r >> 16));
 			}
 			break;
 		}
 
 		case 32: {
 			for (int i = 0; i < size; i+= 4) {
-				uint8_t *buffer;
-				buffer = rawData + i;
+				uint32_t color = *reinterpret_cast<uint32_t *>(rawData + i);
 
-				uint32_t color = *reinterpret_cast<uint32_t *>(buffer);
+				int b = color & 255;
+				int g = (color >> 8) & 255;
+				int r = (color >> 16) & 255;
+				int a = (color >> 24) & 255;
 
-				int b = (color & 255);
-				int g = ((color << 8) & 255);
-				int r = ((color << 16) & 255);
-				int a ((color << 24) & 255);
-
-				img.pixels[i] = (b + (g >> 8) + (r >> 16) + (a >> 24));
-				delete[] buffer;
+				img.pixels[i / 4] = (b + (g >> 8) + (r >> 16) + (a >> 24));
 			}
 			break;
 		}
@@ -157,8 +181,12 @@ image parseBMP(string filename) {
 
 	for(int i = 0; i < pixelCount; i++) {
 
-		temp[i] = ((img.pixels[i] << 16) & 255) | ((img.pixels[i] << 8) & 255) >> 8 | ((img.pixels[i]) & 255) >> 16 |
-		((img.pixels[i] << 24) & 255) >> 24;
+		uint32_t px = img.pixels[i];
+		uint8_t r = (px >> 24) & 0xFF;
+		uint8_t g = (px >> 16) & 0xFF;
+		uint8_t b = (px >> 8) & 0xFF;
+		uint8_t a = px & 0xFF;
+		temp[i] = (r << 16) | (g << 8) | b;
 
 	}
 
@@ -167,11 +195,11 @@ image parseBMP(string filename) {
 		uint32_t *temp2 = new uint32_t[pixelCount];
 		for (int x = 0; x < img.width; x++) {
 			for (int y = 0; y < img.width; y++) {
-				temp2[(img.height - (x * img.width)) + y] = temp[x * img.width + y];
+				temp2[(img.height - (y * img.width)) + x] = temp[y * img.width + x];
 			}
 		}
 
-		delete temp;
+		delete[] temp;
 		temp = temp2;
 
 	}
